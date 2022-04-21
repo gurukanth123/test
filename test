@@ -1,0 +1,96 @@
+var responsebackend = JSON.parse(context.getVariable("response.content"));
+var totalResults = responsebackend.totalResults;
+var totalItems;
+var accumulateItems = [];
+var count = 0;
+var offset = 0;
+var endpoint = context.getVariable("EndPoint");
+
+var basicAuth = context.getVariable("private.Auth");
+    
+while (offset <= totalResults) 
+{
+     myHeaders = {'Authorization':basicAuth, 'Content-Type':'application/json'};
+     var myRequest = new Request(endpoint,"GET",myHeaders);
+     myRequest.queryParams.offset = (offset).toFixed();
+     var exchange = httpClient.send(myRequest);
+       
+//Waiting on response to complete     
+exchange.waitForComplete(); 
+
+//Checking for Error           
+if(exchange.isError())
+
+      {
+            print("error")
+            print(exchange.getError());
+            var exchange = httpClient.send(myRequest);
+       }
+                        
+//Checking for Sucesses
+ if (exchange.isSuccess()) 
+      {
+          print(JSON.stringify(basicAuth));
+          context.setVariable("totalItems", exchange.getResponse().content);
+          var response = JSON.parse(context.getVariable("totalItems"));
+          var aItems = response.items;
+          for(var k=0; k<aItems.length; k++)
+          {
+              //accumulating data from each callout whose ExternalPublishedJobStatus is posted
+          if(aItems[k]["ExternalPublishedJobStatus"] == "ORA_POSTED")    
+              {
+                  accumulateItems.push(aItems[k]) 
+                  
+              }
+            }
+         
+      }
+         
+//Increasing the loop value by assigning the offsetvalue from each iteration
+    
+    offset += 500;
+    print(typeof(responseData))
+    var responseUse = JSON.parse(context.getVariable("responseData"));
+    count += 1;
+    print(count)
+
+ }
+// while loop ends here
+//------------------------------------------------------------------------------
+
+
+//This function is using the data set from the above callout and appending the location name using the following logic
+result();
+function result()
+	{
+      var Locations = JSON.parse(context.getVariable("calloutResponse.content"));
+      print(JSON.parse(context.getVariable("calloutResponse.content")))
+      var finalItems = [];
+      //items carry the actual requstion data from backend
+      var items = accumulateItems;
+      //var totalRows = response.totalResults;
+      var lItems = Locations.items;
+     // lItems is carrys location id and location name
+      context.setVariable("locationdata", lItems);
+      print(items.length + "fulllength")
+          for(var i=0; i < items.length; i++) 
+		   {
+             
+                items[i]["PrimaryLocationName"] = "United States";
+        
+        
+                 for(var j=0; j < lItems.length; j++)
+				 {   //Checking if PrimaryLocationId of items dataset to the locations dataset GEOGRAPHY_NODE_ID
+                     if ( items[i]["PrimaryLocationId"] == lItems[j]["GEOGRAPHY_NODE_ID"]  )
+                    {
+                        //once above condtion is true we replacing the PrimaryLocationName in items dataset from location dataset for which we have match of above condtion
+                        items[i]["PrimaryLocationName"] = lItems[j]["GEOGRAPHY_NAME"]; 
+                     }
+                 }
+        
+                  finalItems.push(items[i]);
+            }
+            
+ 
+   context.setVariable("response.content",JSON.stringify(finalItems));
+ }
