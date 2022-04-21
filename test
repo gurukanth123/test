@@ -94,3 +94,14 @@ function result()
  
    context.setVariable("response.content",JSON.stringify(finalItems));
  }
+
+
+
+var items = [];
+for(var k=0; k<aItems.length; k++) {
+    var reqNumber = aItems[k]["requisition number"];
+	if(aItems[k]["ExternalPublishedJobStatus"] == "ORA_POSTED" && items.indexOf(reqNumber) == -1) {
+		  accumulateItems.push(aItems[k]);	
+	}
+	items.push(reqNumber);	
+}
